@@ -186,6 +186,7 @@ class CenterShift(object):
     def __call__(self, data_dict):
         if "coord" in data_dict.keys():
             x_min, y_min, z_min = data_dict["coord"].min(axis=0)
+
             x_max, y_max, _ = data_dict["coord"].max(axis=0)
             if self.apply_z:
                 shift = [(x_min + x_max) / 2, (y_min + y_max) / 2, z_min]
@@ -1207,7 +1208,7 @@ def default():
         dict(type="CenterShift", apply_z=True),
         dict(
             type="GridSample",
-            grid_size=0.02,
+            grid_size=2,
             hash_type="fnv",
             mode="train",
             return_grid_coord=True,
