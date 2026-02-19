@@ -1,0 +1,13 @@
+line 406:
+	- Seems like local point cloud view had been generated before the Forward method ?
+
+line 424:
+	- What is mask_loss_weight and roll_mask_loss_weight, seems like some probability threshold
+	- What is meant by model "head"?
+line 435:
+	- Why do we compute loss of features from point cloud space corresponding to global mask
+	- Why is it done without gradients
+line 449:
+	- Is mask loss of shape N,1 ?
+	- Why do we now also apply torch_scatter with mask loss to global mask - line 458
+	- Why is loss appended but mask_loss assigned to Dictionary ??? - line 465
