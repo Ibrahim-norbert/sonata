@@ -1,3 +1,6 @@
+So far found global and local loss which have gradients
+Found other losses which do not have any gradients
+
 line 406:
 	- Seems like local point cloud view had been generated before the Forward method ?
 

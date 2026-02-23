@@ -601,11 +601,15 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         mask_token=False,
         enc_mode=False,
         freeze_encoder=False,
+        up_cast_level=2,
     ):
         super().__init__()
+        self.up_cast_level = up_cast_level
         self.num_stages = len(enc_depths)
         self.order = [order] if isinstance(order, str) else order
         self.enc_mode = enc_mode
+        self.mask_token = mask_token
+        self.up_cast_level = up_cast_level
         self.shuffle_orders = shuffle_orders
         self.freeze_encoder = freeze_encoder
 
@@ -759,6 +763,16 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         point = self.enc(point)
         if not self.enc_mode:
             point = self.dec(point)
+        return point
+
+    def up_cast(self, point):
+        for _ in range(self.up_cast_level):
+            assert "pooling_parent" in point.keys()
+            assert "pooling_inverse" in point.keys()
+            parent = point.pop("pooling_parent")
+            inverse = point.pop("pooling_inverse")
+            parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
+            point = parent
         return point
 
 
