@@ -1116,7 +1116,7 @@ class MultiViewGenerator(object):
         view_dict = {}
         for global_view in global_views:
             global_view.pop("index")
-            global_view = self.global_transform(global_view)
+            global_view = self.global_transform(global_view) # "Coord" is only manipulated
             for key in self.view_keys:
                 if f"global_{key}" in view_dict.keys():
                     view_dict[f"global_{key}"].append(global_view[key])

@@ -602,6 +602,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         enc_mode=False,
         freeze_encoder=False,
         up_cast_level=2,
+        grid_size = None
     ):
         super().__init__()
         self.up_cast_level = up_cast_level
@@ -622,7 +623,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         assert self.enc_mode or self.num_stages == len(dec_channels) + 1
         assert self.enc_mode or self.num_stages == len(dec_num_head) + 1
         assert self.enc_mode or self.num_stages == len(dec_patch_size) + 1
-
+        self.grid_size = grid_size
         # normalization layer
         ln_layer = nn.LayerNorm
         # activation layers
@@ -657,6 +658,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
                     ),
                     name="down",
                 )
+
             for i in range(enc_depths[s]):
                 enc.add(
                     Block(
@@ -685,7 +687,6 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
             if len(enc) != 0:
                 self.enc.add(module=enc, name=f"enc{s}")
 
-        # decoder
         if not self.enc_mode:
             dec_drop_path = [
                 x.item() for x in torch.linspace(0, drop_path, sum(dec_depths))
