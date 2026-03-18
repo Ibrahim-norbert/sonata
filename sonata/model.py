@@ -767,14 +767,21 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         return point
 
     def up_cast(self, point):
-        for _ in range(self.up_cast_level):
+        # NOTE: Not sure what this means
+        for _ in range(2):
             assert "pooling_parent" in point.keys()
             assert "pooling_inverse" in point.keys()
             parent = point.pop("pooling_parent")
             inverse = point.pop("pooling_inverse")
             parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
             point = parent
-        return point
+        while "pooling_parent" in point.keys():
+            assert "pooling_inverse" in point.keys()
+            parent = point.pop("pooling_parent")
+            inverse = point.pop("pooling_inverse")
+            parent.feat = point.feat[inverse]
+            point = parent
+        return point.feat[point.inverse]
 
 
 def load(
