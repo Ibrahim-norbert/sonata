@@ -1054,13 +1054,13 @@ class MultiViewGenerator(object):
 
     def get_view(self, point, center, scale):
         coord = point["coord"]
-        max_size = min(self.max_size, coord.shape[0])
+        max_size = min(self.max_size, coord.shape[0]) # Max size 
         size = int(np.random.uniform(*scale) * max_size)
         index = np.argsort(np.sum(np.square(coord - center), axis=-1))[:size]
         view = dict(index=index)
         for key in point.keys():
             if key in self.view_keys:
-                view[key] = point[key][index]
+                view[key] = point[key][index] 
 
         if "index_valid_keys" in point.keys():
             # inherit index_valid_keys from point
