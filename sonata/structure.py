@@ -76,21 +76,29 @@ class Point(Dict):
             # (adjust `grid_size` to what your want)
             assert {"grid_size", "coord"}.issubset(self.keys())
 
+            assert self.coord.shape[0] <= 1, f"WE can only have batch size 1 but we have {self.coord.shape}"
+            
+            grdiCoord = self.coord
+            for i, c in enumerate(grdiCoord[0]):
+                grdiCoord[0][i] - - grdiCoord[0][:,i].min()
+
             self["grid_coord"] = torch.div(
-                self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
+                grdiCoord[0], self.grid_size, rounding_mode="trunc"
             ).int()
+
+            
 
         if depth is None:
             # Adaptive measure the depth of serialization cube (length = 2 ^ depth)
             depth = int(self.grid_coord.max() + 1).bit_length()
         self["serialized_depth"] = depth
         # Maximum bit length for serialization code is 63 (int64)
-        assert depth * 3 + len(self.offset).bit_length() <= 63
+        assert depth * 3 + len(self.offset).bit_length() <= 63, f"We have: {self.grid_coord.max()}"
         # Here we follow OCNN and set the depth limitation to 16 (48bit) for the point position.
         # Although depth is limited to less than 16, we can encode a 655.36^3 (2^16 * 0.01) meter^3
         # cube with a grid size of 0.01 meter. We consider it is enough for the current stage.
         # We can unlock the limitation by optimizing the z-order encoding function if necessary.
-        assert depth <= 16
+        assert depth <= 16, f"We have: {self.grid_coord.max()} and length x {self.coord.max(0)[0] - self.coord.min(0)[0]} and y {self.coord.max(0)[1] - self.coord.min(0)[1]}"
 
         # The serialization codes are arranged as following structures:
         # [Order1 ([n]),

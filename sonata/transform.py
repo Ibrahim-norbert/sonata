@@ -834,6 +834,17 @@ class GridSample(object):
 
     def __call__(self, data_dict):
         assert "coord" in data_dict.keys()
+        c = data_dict["coord"]
+        assert data_dict["coord"].shape[0] > 1, f"WE can only have batch size 1 but we have {c.shape}"
+        grdiCoord = data_dict["coord"]
+        for i, c in enumerate(grdiCoord[0]):
+
+            grdiCoord[:, i] -= grdiCoord[:,i].min()
+        
+        data_dict["coord"] = grdiCoord
+        assert np.isin(0, grdiCoord.min(-1)).all(), f"Minimum not set at 0,0 origin, instead: {grdiCoord.min(-1)}"
+
+        # TODO: CONTINUE FROM HERE 111
         scaled_coord = data_dict["coord"] / np.array(self.grid_size)
         grid_coord = np.floor(scaled_coord).astype(int)
         min_coord = grid_coord.min(0)

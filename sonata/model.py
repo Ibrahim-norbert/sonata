@@ -613,6 +613,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         self.up_cast_level = up_cast_level
         self.shuffle_orders = shuffle_orders
         self.freeze_encoder = freeze_encoder
+       
 
         assert self.num_stages == len(stride) + 1
         assert self.num_stages == len(enc_depths)
@@ -766,15 +767,20 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
             point = self.dec(point)
         return point
 
-    def up_cast(self, point):
+    def extractFeatures(self, point):
         # NOTE: Not sure what this means
-        for _ in range(2):
+        for _ in range(self.up_cast_level):
             assert "pooling_parent" in point.keys()
             assert "pooling_inverse" in point.keys()
             parent = point.pop("pooling_parent")
             inverse = point.pop("pooling_inverse")
             parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
             point = parent
+
+        return point
+    
+    def up_cast(self, point):
+        point =  self.extractFeatures(point)
         while "pooling_parent" in point.keys():
             assert "pooling_inverse" in point.keys()
             parent = point.pop("pooling_parent")
