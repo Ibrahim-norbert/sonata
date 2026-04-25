@@ -21,6 +21,7 @@ Please cite our work if the code is helpful to you.
 # limitations under the License.
 
 
+from copy import deepcopy
 import os
 from packaging import version
 from huggingface_hub import hf_hub_download, PyTorchModelHubMixin
@@ -779,7 +780,8 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
 
         return point
     
-    def up_cast(self, point):
+    def up_cast(self, pointc):
+        point = deepcopy(pointc)
         point =  self.extractFeatures(point)
         while "pooling_parent" in point.keys():
             assert "pooling_inverse" in point.keys()
