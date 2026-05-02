@@ -21,7 +21,7 @@ Please cite our work if the code is helpful to you.
 # limitations under the License.
 
 
-from copy import deepcopy
+import copy
 import os
 from packaging import version
 from huggingface_hub import hf_hub_download, PyTorchModelHubMixin
@@ -30,9 +30,8 @@ import torch
 import torch.nn as nn
 from torch.nn.init import trunc_normal_
 import spconv.pytorch as spconv
-#import torch_scatter # Does not work for Windwos
+# import torch_scatter # Does not work for Windwos
 from timm.layers import DropPath
-
 
 try:
     import flash_attn
@@ -72,14 +71,16 @@ class RPE(torch.nn.Module):
         self.num_heads = num_heads
         self.pos_bnd = int((4 * patch_size) ** (1 / 3) * 2)
         self.rpe_num = 2 * self.pos_bnd + 1
-        self.rpe_table = torch.nn.Parameter(torch.zeros(3 * self.rpe_num, num_heads))
+        self.rpe_table = torch.nn.Parameter(
+            torch.zeros(3 * self.rpe_num, num_heads))
         torch.nn.init.trunc_normal_(self.rpe_table, std=0.02)
 
     def forward(self, coord):
         idx = (
             coord.clamp(-self.pos_bnd, self.pos_bnd)  # clamp into bnd
             + self.pos_bnd  # relative position to positive index
-            + torch.arange(3, device=coord.device) * self.rpe_num  # x, y, z stride
+            + torch.arange(3, device=coord.device) *
+            self.rpe_num  # x, y, z stride
         )
         out = self.rpe_table.index_select(0, idx.reshape(-1))
         out = out.view(idx.shape + (-1,)).sum(3)
@@ -147,7 +148,8 @@ class SerializedAttention(PointModule):
         if rel_pos_key not in point.keys():
             grid_coord = point.grid_coord[order]
             grid_coord = grid_coord.reshape(-1, K, 3)
-            point[rel_pos_key] = grid_coord.unsqueeze(2) - grid_coord.unsqueeze(1)
+            point[rel_pos_key] = grid_coord.unsqueeze(
+                2) - grid_coord.unsqueeze(1)
         return point[rel_pos_key]
 
     @torch.no_grad()
@@ -174,24 +176,27 @@ class SerializedAttention(PointModule):
             mask_pad = bincount > self.patch_size
             bincount_pad = ~mask_pad * bincount + mask_pad * bincount_pad
             _offset = nn.functional.pad(offset, (1, 0))
-            _offset_pad = nn.functional.pad(torch.cumsum(bincount_pad, dim=0), (1, 0))
+            _offset_pad = nn.functional.pad(
+                torch.cumsum(bincount_pad, dim=0), (1, 0))
             pad = torch.arange(_offset_pad[-1], device=offset.device)
             unpad = torch.arange(_offset[-1], device=offset.device)
             cu_seqlens = []
             for i in range(len(offset)):
-                unpad[_offset[i] : _offset[i + 1]] += _offset_pad[i] - _offset[i]
+                unpad[_offset[i]: _offset[i + 1]
+                      ] += _offset_pad[i] - _offset[i]
                 if bincount[i] != bincount_pad[i]:
                     pad[
                         _offset_pad[i + 1]
                         - self.patch_size
-                        + (bincount[i] % self.patch_size) : _offset_pad[i + 1]
+                        + (bincount[i] % self.patch_size): _offset_pad[i + 1]
                     ] = pad[
                         _offset_pad[i + 1]
                         - 2 * self.patch_size
-                        + (bincount[i] % self.patch_size) : _offset_pad[i + 1]
+                        + (bincount[i] % self.patch_size): _offset_pad[i + 1]
                         - self.patch_size
                     ]
-                pad[_offset_pad[i] : _offset_pad[i + 1]] -= _offset_pad[i] - _offset[i]
+                pad[_offset_pad[i]: _offset_pad[i + 1]
+                    ] -= _offset_pad[i] - _offset[i]
                 cu_seqlens.append(
                     torch.arange(
                         _offset_pad[i],
@@ -211,7 +216,8 @@ class SerializedAttention(PointModule):
     def forward(self, point):
         if not self.enable_flash:
             self.patch_size = min(
-                offset2bincount(point.offset).min().tolist(), self.patch_size_max
+                offset2bincount(point.offset).min(
+                ).tolist(), self.patch_size_max
             )
 
         H = self.num_heads
@@ -229,7 +235,8 @@ class SerializedAttention(PointModule):
         if not self.enable_flash:
             # encode and reshape qkv: (N', K, 3, H, C') => (3, N', H, K, C')
             q, k, v = (
-                qkv.reshape(-1, K, 3, H, C // H).permute(2, 0, 3, 1, 4).unbind(dim=0)
+                qkv.reshape(-1, K, 3, H, C // H).permute(2,
+                                                         0, 3, 1, 4).unbind(dim=0)
             )
             # attn
             if self.upcast_attention:
@@ -384,7 +391,8 @@ class Block(PointModule):
         point.feat = shortcut + point.feat
         if not self.pre_norm:
             point = self.norm2(point)
-        point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(
+            point.feat)
         return point
 
 
@@ -446,10 +454,10 @@ class GridPooling(PointModule):
         # head_indices of each cluster, for reduce attr e.g. code, batch
         head_indices = indices[idx_ptr[:-1]]
 
-        
         point_dict = Dict(
             feat=torch.segment_reduce(
-                self.proj(point.feat)[indices], offsets=idx_ptr, reduce=self.reduce
+                self.proj(point.feat)[
+                    indices], offsets=idx_ptr, reduce=self.reduce
             ),
             coord=torch.segment_reduce(
                 point.coord[indices], offsets=idx_ptr, reduce="mean"
@@ -507,7 +515,8 @@ class GridUnpooling(PointModule):
     ):
         super().__init__()
         self.proj = PointSequential(nn.Linear(in_channels, out_channels))
-        self.proj_skip = PointSequential(nn.Linear(skip_channels, out_channels))
+        self.proj_skip = PointSequential(
+            nn.Linear(skip_channels, out_channels))
 
         if norm_layer is not None:
             self.proj.add(norm_layer(out_channels))
@@ -528,7 +537,8 @@ class GridUnpooling(PointModule):
 
         parent = self.proj_skip(parent)
         parent.feat = parent.feat + self.proj(point).feat[inverse]
-        parent.sparse_conv_feat = parent.sparse_conv_feat.replace_feature(parent.feat)
+        parent.sparse_conv_feat = parent.sparse_conv_feat.replace_feature(
+            parent.feat)
 
         if self.traceable:
             point.feat = feat
@@ -549,7 +559,8 @@ class Embedding(PointModule):
         self.in_channels = in_channels
         self.embed_channels = embed_channels
 
-        self.stem = PointSequential(linear=nn.Linear(in_channels, embed_channels))
+        self.stem = PointSequential(
+            linear=nn.Linear(in_channels, embed_channels))
         if norm_layer is not None:
             self.stem.add(norm_layer(embed_channels), name="norm")
         if act_layer is not None:
@@ -603,7 +614,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         enc_mode=False,
         freeze_encoder=False,
         up_cast_level=2,
-        grid_size = None
+        grid_size=None
     ):
         super().__init__()
         self.up_cast_level = up_cast_level
@@ -614,7 +625,6 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         self.up_cast_level = up_cast_level
         self.shuffle_orders = shuffle_orders
         self.freeze_encoder = freeze_encoder
-       
 
         assert self.num_stages == len(stride) + 1
         assert self.num_stages == len(enc_depths)
@@ -646,7 +656,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         self.enc = PointSequential()
         for s in range(self.num_stages):
             enc_drop_path_ = enc_drop_path[
-                sum(enc_depths[:s]) : sum(enc_depths[: s + 1])
+                sum(enc_depths[:s]): sum(enc_depths[: s + 1])
             ]
             enc = PointSequential()
             if s > 0:
@@ -697,7 +707,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
             dec_channels = list(dec_channels) + [enc_channels[-1]]
             for s in reversed(range(self.num_stages - 1)):
                 dec_drop_path_ = dec_drop_path[
-                    sum(dec_depths[:s]) : sum(dec_depths[: s + 1])
+                    sum(dec_depths[:s]): sum(dec_depths[: s + 1])
                 ]
                 dec_drop_path_.reverse()
                 dec = PointSequential()
@@ -760,7 +770,8 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         point = Point(data_dict)
         point = self.embedding(point)
 
-        point.serialization(order=self.order, shuffle_orders=self.shuffle_orders)
+        point.serialization(
+            order=self.order, shuffle_orders=self.shuffle_orders)
         point.sparsify()
 
         point = self.enc(point)
@@ -768,8 +779,19 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
             point = self.dec(point)
         return point
 
-    def extractFeatures(self, point):
-        # NOTE: Not sure what this means
+   
+    def reversePointGridPooling(self, point):
+        while "pooling_parent" in point.keys():
+            assert "pooling_inverse" in point.keys()
+            parent = point.pop("pooling_parent")
+            inverse = point.pop("pooling_inverse")
+            parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
+            point = parent
+        return point
+
+    @torch.no_grad
+    def up_cast(self, point_):
+        point = copy.deepcopy(point_)
         for _ in range(self.up_cast_level):
             assert "pooling_parent" in point.keys()
             assert "pooling_inverse" in point.keys()
@@ -777,12 +799,6 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
             inverse = point.pop("pooling_inverse")
             parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
             point = parent
-
-        return point
-    
-    def up_cast(self, pointc):
-        point = deepcopy(pointc)
-        point =  self.extractFeatures(point)
         while "pooling_parent" in point.keys():
             assert "pooling_inverse" in point.keys()
             parent = point.pop("pooling_parent")
@@ -806,13 +822,15 @@ def load(
             filename=f"{name}.pth",
             repo_type="model",
             revision="main",
-            local_dir=download_root or os.path.expanduser("~/.cache/sonata/ckpt"),
+            local_dir=download_root or os.path.expanduser(
+                "~/.cache/sonata/ckpt"),
         )
     elif os.path.isfile(name):
         print(f"Loading checkpoint in local path: {name} ...")
         ckpt_path = name
     else:
-        raise RuntimeError(f"Model {name} not found; available models = {MODELS}")
+        raise RuntimeError(
+            f"Model {name} not found; available models = {MODELS}")
 
     if version.parse(torch.__version__) >= version.parse("2.4"):
         ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=True)
@@ -827,6 +845,7 @@ def load(
 
     model = PointTransformerV3(**ckpt["config"])
     model.load_state_dict(ckpt["state_dict"])
-    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    n_parameters = sum(p.numel()
+                       for p in model.parameters() if p.requires_grad)
     print(f"Model params: {n_parameters / 1e6:.2f}M")
     return model
