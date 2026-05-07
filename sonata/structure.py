@@ -76,17 +76,11 @@ class Point(Dict):
             # (adjust `grid_size` to what your want)
             assert {"grid_size", "coord"}.issubset(self.keys())
 
-            assert self.coord.shape[0] <= 1, f"WE can only have batch size 1 but we have {self.coord.shape}"
+            #assert self.coord.shape[0] <= 1, f"WE can only have batch size 1 but we have {self.coord.shape}"
             
-            grdiCoord = self.coord
-            for i, c in enumerate(grdiCoord[0]):
-                grdiCoord[0][i] - - grdiCoord[0][:,i].min()
-
             self["grid_coord"] = torch.div(
-                grdiCoord[0], self.grid_size, rounding_mode="trunc"
+                self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
             ).int()
-
-            
 
         if depth is None:
             # Adaptive measure the depth of serialization cube (length = 2 ^ depth)

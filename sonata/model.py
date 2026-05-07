@@ -790,8 +790,7 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         return point
 
     @torch.no_grad
-    def up_cast(self, point_):
-        point = copy.deepcopy(point_)
+    def up_cast(self, point):
         for _ in range(self.up_cast_level):
             assert "pooling_parent" in point.keys()
             assert "pooling_inverse" in point.keys()
