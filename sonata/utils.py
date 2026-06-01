@@ -30,9 +30,12 @@ from datetime import datetime
 
 @torch.no_grad()
 def offset2bincount(offset):
-    return torch.diff(
-        offset, prepend=torch.tensor([0], device=offset.device, dtype=torch.long)
-    )
+    try:
+        return torch.diff(
+            offset, prepend=torch.tensor([0], device=offset.device, dtype=torch.long)
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed bincounting with offset shape {offset.shape} and error:{e}") from e
 
 
 @torch.no_grad()
