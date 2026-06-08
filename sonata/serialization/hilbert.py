@@ -155,6 +155,9 @@ def encode(locs, num_dims, num_bits):
 
     # Treat the location integers as 64-bit unsigned and then split them up into
     # a sequence of uint8s.  Preserve the association by dimension.
+    # ``.contiguous()`` guards against a non-unit last-dim stride (e.g. a
+    # transposed/strided grid_coord), which ``.view(torch.uint8)`` rejects with
+    # "self.stride(-1) must be 1 to view Long as Byte".  No-op when contiguous.
     locs_uint8 = locs.long().view(torch.uint8).reshape((-1, num_dims, 8)).flip(-1)
 
     # Now turn these into bits and truncate to num_bits.
