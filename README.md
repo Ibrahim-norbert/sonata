@@ -138,7 +138,7 @@ This repo provide two ways of installation: **standalone mode** and **package mo
   # assume the ckpt file is stored in the 'ckpt' folder
   model = sonata.model.load("ckpt/sonata.pth").cuda()
 
-  # the ckpt file store the config and state_dict of pretrained model
+  # the ckpt file store the config and checkpoint of pretrained model
   ```
   If *FlashAttention* is not available, load the pre-trained model with the following code:
   ```python

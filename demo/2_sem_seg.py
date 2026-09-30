@@ -146,7 +146,7 @@ if __name__ == "__main__":
         "sonata_linear_prob_head_sc", repo_id="facebook/sonata", ckpt_only=True
     )
     seg_head = SegHead(**ckpt["config"]).cuda()
-    seg_head.load_state_dict(ckpt["state_dict"])
+    seg_head.load_state_dict(ckpt["checkpoint"])
     # Load default data transform pipeline
     transform = sonata.transform.default()
     # Load data

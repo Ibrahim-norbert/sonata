@@ -617,7 +617,6 @@ class PointTransformerV3(PointModule, PyTorchModelHubMixin):
         grid_size=None
     ):
         super().__init__()
-        self.up_cast_level = up_cast_level
         self.num_stages = len(enc_depths)
         self.order = [order] if isinstance(order, str) else order
         self.enc_mode = enc_mode
@@ -843,7 +842,7 @@ def load(
         return ckpt
 
     model = PointTransformerV3(**ckpt["config"])
-    model.load_state_dict(ckpt["state_dict"])
+    model.load_state_dict(ckpt["checkpoint"])
     n_parameters = sum(p.numel()
                        for p in model.parameters() if p.requires_grad)
     print(f"Model params: {n_parameters / 1e6:.2f}M")
